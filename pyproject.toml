@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "my-package"
+name = "secretary_package"
 version = "0.1.0"
 description = "My awesome package"
 authors = [{ name = "Denys Raduchych", email = "raduchych.denys@gmail.com" }]
