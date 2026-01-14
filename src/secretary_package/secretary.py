@@ -75,6 +75,7 @@ class CooperativeSecretaryEnv(gym.Env):
             self.current_man_quality = self.np_random.uniform(0, 1)
             self.current_woman_quality = self.np_random.uniform(0, 1)
             info = {'msg': 'Next candidate'}
+            # TO DO: provide enalitily to extract information about rank
 
         observations = self._get_observations()
         return observations, reward, done, info
