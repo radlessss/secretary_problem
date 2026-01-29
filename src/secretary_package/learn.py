@@ -7,12 +7,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from secretary_package.agent import agent_learner  # Ваш оновлений клас CooperativeAgentLearner
 from secretary_package.utilfunctions import scale_state, single_shape_adaptor
-from secretary_package.secretary import CooperativeSecretaryEnv # Ваше нове середовище
+from secretary_package.environment import TwoSideSecretaryEnv # Ваше нове середовище
 # Припускаємо, що rl_utils адаптований або використовуємо стандартні списки для батчів
 
 # 1. Ініціалізація кооперативного середовища
 N_CANDIDATES = 100
-env = CooperativeSecretaryEnv(N=N_CANDIDATES)
+env = TwoSideSecretaryEnv(N=N_CANDIDATES)
 
 # 2. Параметри агента та навчання
 nr_features = env.observation_space.shape[0]

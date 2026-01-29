@@ -68,29 +68,127 @@
 # np.savetxt(perfdir + 'cooperative_steps.dat', steps_lst)
 # print(f"Дані збережені в {perfdir}")
 
+"""
+    Симуляція для одного агента у заданому середовищі.
+    
+    Ця функція підходить для класичної задачі секретаря або однієї сторони, 
+    яка намагається оптимізувати свій вибір незалежно від інших (або якщо середовище 
+    абстрагує другу сторону).
 
+    Аргументи:
+        environment: Ініціалізоване середовище (наприклад, OneSideSecretaryEnv).
+        agent: Об'єкт агента, що має методи `reset()` та `make_decision(obs)`.
+        episodes: Кількість незалежних епізодів (ігор) для запуску. За замовчуванням 1000.
 
-def run_simulation(environment, agent1, agent2, episodes=1000):
+    Повертає:
+        rewards: Список отриманих винагород за кожен епізод.
+        steps: Список кількості кроків (скільки кандидатів було переглянуто) для кожного епізоду.
+"""
+def run_one_side_simulation(environment, agent, episodes=1000):
+
     rewards = []
     steps = []
 
     for _ in range(episodes):
-        obs_m, obs_w = environment.reset()
-        agent1.reset()
-        agent2.reset()
+        obs = environment.reset()
+        agent.reset()
         terminated = False
 
         while not terminated:
-            action_m = agent1.get_action(obs_m, environment, epsilon=0)
-            action_w = agent2.get_action(obs_w, environment, epsilon=0)
-            environment.render(mode='text')
+            action = agent.make_decision(obs)
+            #environment.render(mode='text')
 
-            (obs_m, obs_w), reward, terminated, info = environment.step(
-                action_man=action_m,
-                action_woman=action_w
-            )
+            obs, reward, terminated, info = environment.step(action)
 
         rewards.append(reward)
         steps.append(environment.time)
 
     return rewards, steps
+
+
+
+
+"""
+    Симуляція взаємодії ДВОХ незалежних агентів у спільному середовищі.
+    
+    Використовується для `TwoSideSecretaryEnv`, де є два окремі учасники (наприклад, Чоловік і Жінка),
+    кожен з яких має власну стратегію і бачить тільки свою частину спостережень.
+
+    Аргументи:
+        environment (gym.Env): Двостороннє середовище.
+        agent1 (object): Агент першої сторони (obs[0]).
+        agent2 (object): Агент другої сторони (obs[1]).
+        episodes (int): Кількість епізодів.
+
+    Логіка:
+        Середовище повертає кортеж спостережень (obs_man, obs_woman).
+        Кожен агент отримує своє спостереження і генерує власну дію.
+        Дії об'єднуються у список і передаються в середовище.
+
+    Повертає:
+        rewards (list), steps (list)
+"""
+def run_two_side_simulation(environment, agent1, agent2, episodes=1000):
+    rewards = []
+    steps = []
+
+    for _ in range(episodes):
+        obs = environment.reset()
+        agent1.reset()
+        agent2.reset()
+        terminated = False
+
+        while not terminated:
+            actions = [agent1.make_decision(obs[0]), agent2.make_decision(obs[1])]
+            environment.render(mode='text')
+
+            obs, reward, terminated, info = environment.step(actions)
+
+        rewards.append(reward)
+        steps.append(environment.time)
+
+    return rewards, steps
+
+
+
+
+"""
+    Симуляція для "Кооперативного" агента.
+    
+    У цьому випадку `agent` виступає як централізований контролер (наприклад, `CooperativeTwoSideThresholdAgent`),
+    який бачить повну картину (обидва боки спостережень) і приймає узгоджене рішення 
+    для системи в цілому.
+
+    Аргументи:
+        environment (gym.Env): Середовище (наприклад, SecretaryEnv з num_sides=2).
+        agent (object): Кооперативний агент, метод `make_decision` якого очікує повний набір спостережень.
+        episodes (int): Кількість епізодів.
+
+    Логіка:
+        Агент отримує `obs` (який містить дані всіх сторін) і повертає дію (або список дій),
+        які ведуть до спільної мети (максимізації сумарної винагороди).
+
+    Повертає:
+        rewards (list), steps (list)
+"""
+def run_cooperative_two_side_simulation(environment, agent, episodes=1000):
+    rewards = []
+    steps = []
+
+    for _ in range(episodes):
+        obs = environment.reset()
+        agent.reset()
+        terminated = False
+
+        while not terminated:
+            action = agent.make_decision(obs)
+            environment.render(mode='text')
+
+            obs, reward, terminated, info = environment.step(action)
+
+        rewards.append(reward)
+        steps.append(environment.time)
+
+    return rewards, steps
+
+
