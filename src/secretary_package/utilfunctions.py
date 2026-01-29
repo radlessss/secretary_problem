@@ -1,4 +1,48 @@
 import numpy as np
+class Multiplier:
+    def __init__(self):
+        self.multiplier = 1.0
+
+    def reset(self):
+        self.multiplier = 1.0
+
+    def add_score(self, score):
+        self.multiplier = self.multiplier * score
+    
+    def get_result(self):
+        return self.multiplier
+    
+
+class Adder:
+    def __init__(self):
+        self.total = 0.0
+
+    def add_score(self, score):
+        self.total = self.total + score
+    
+    def get_result(self):
+        return self.total
+    
+    def reset(self):
+        self.total = 0.0
+
+class Averager:
+    def __init__(self):
+        self.total = 0.0
+        self.count = 0
+
+    def add_score(self, score):
+        self.total = self.total + score
+        self.count += 1
+    
+    def get_result(self):
+        if self.count == 0:
+            return 0.0
+        return self.total / self.count
+    
+    def reset(self):
+        self.total = 0.0
+        self.count = 0
 
 def scale_state(state, env):
     '''
