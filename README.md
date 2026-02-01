@@ -120,7 +120,6 @@
    - `n_success` - кількість симуляцій, де вибрали найкращого кандидата
    - `n_total` - загальна кількість симуляцій
 
-   **success rate** = 
 $$
 \text{success rate} = \frac{n_{\text{success}}}{n_{\text{total}}}
 $$
@@ -130,8 +129,6 @@ $$
   - `r_i` - ранг кандидата, якого обрав алгоритм у i-й симуляції  
   - `n_total` - загальна кількість симуляцій 
 
-
-    **expected rank** = 
 $$
 \text{expected rank} = \frac{1}{n_{\text{total}}} \sum_{i=1}^{n_{\text{total}}} r_i 
 $$
