@@ -132,9 +132,11 @@ $$
 
 
     **expected rank** = 
+
 $$
 \text{expected rank} = \frac{1}{n_{\text{total}}} \sum_{i=1}^{n_{\text{total}}} r_i 
 $$
+
 
    Наприклад, якщо обрані кандидати мали ранги `r = [2, 5, 1, 3, 4]` у 5 симуляціях:
 
