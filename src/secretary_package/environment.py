@@ -3,6 +3,7 @@ import gym
 from gym import spaces
 from gym.utils import seeding
 from secretary_package.utilfunctions import Averager
+from secretary_package.utilfunctions import UniformDistributor, NormalDistributor, LogNormalDistributor
 
 # TO DO: impement ability to provide functional reward object for calculation of reward
 # it should be implemented in the same way as score_calculation_func in CooperativeTwoSideThresholdAgent
@@ -150,60 +151,110 @@ class TwoSideSecretaryEnv(gym.Env):
         current_qualities: Поточні якості кандидатів для кожної сторони.
 """
 class SecretaryEnv(gym.Env):
-    def __init__(self, num_sides=2, N=100, reward_func=Averager()):
+    def __init__(self, num_sides, N, reward_func, distributor):
         super(SecretaryEnv, self).__init__()
-
+        
+        if num_sides < 1:
+            raise ValueError("Number of sides must be at least 1.")
         self.num_sides = num_sides
+        
+        if N < 2:
+            raise ValueError("N must be at least 2.")
         self.N = N
-        self.reward_func = reward_func if reward_func is not None else Averager()
+        
+        if distributor is None:
+            raise ValueError("Distributor must be added as parameter and not None.")
+        self.distributor = distributor
+
+        if reward_func is None:
+            raise ValueError("Reward function must be added as parameter and not None.")
+        self.reward_func = reward_func
+        
+        self.time = -1
         self.max_scores = [0.0 for _ in range(num_sides)]
-        self.current_qualities = [0.0 for _ in range(num_sides)]
+        self.observations = self.generate_observations()
+        self.current_qualities = list(self.observations[self.time])
         
         #self.action_space = spaces.Discrete(2) # 0: Continue, 1: Halt
 
         # Стан (Observation) для одного агента: [час, рекорд_партнера, якість_поточного_партнера]
         #self.observation_space = spaces.Box(low=0, high=1.0, shape=(3,), dtype=np.float32)
         
-        self.seed()
-        self.reset()
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
-
+    def generate_observations(self):
+        observations = []
+        for i in range(self.N):
+            obs = []
+            for j in range(self.num_sides):
+                obs.append(self.distributor.sample())
+            observations.append(tuple(obs))
+        return observations
+    
     def reset(self):
-        self.time = 0
+        self.time = -1
         self.reward_func.reset()
         # Найкращі бали, які бачили сторони до цього моменту
         self.max_scores = [0.0 for _ in range(self.num_sides)]
+        self.observations = self.generate_observations()
         
         return self._generate_next_observations()
 
     def _generate_next_observations(self):
         '''Повертає стан окремо для чоловіка і для жінки'''
         # Генеруємо початкову пару
+        
         self.time += 1
-        self.current_qualities = [self.np_random.uniform(0, 1) for _ in range(self.num_sides)]
+
+        if self.time >= self.N:
+            raise Exception(f" Поточний крок вийшов за межі кроку симуляції time={self.time}, N={self.N}")
+        
+        self.current_qualities = list(self.observations[self.time])
         obs = []
         for i in range(0, self.num_sides):
-            obs_i = np.array([self.time/self.N, self.max_scores[i], self.current_qualities[i]], dtype=np.float32)
+            obs_i = np.array([(self.time+1)/self.N, self.max_scores[i], self.current_qualities[i]], dtype=np.float32)
             obs.append(obs_i)
         return obs
+    
+
+    def get_absolute_ranks(self):
+        agents_current_agent_qualities_ranks = []
+
+        def compute_rank(qualities, q):
+            sorted_qualities = sorted(qualities, reverse=True)
+            return sorted_qualities.index(q) + 1
+        
+        for agent_idx, current_agent_quality in enumerate(self.current_qualities):
+            agent_values = [value [agent_idx] for value in self.observations]
+            current_agent_quality_rank = compute_rank(agent_values, current_agent_quality)
+            agents_current_agent_qualities_ranks.append(current_agent_quality_rank)
+
+        return agents_current_agent_qualities_ranks
+
 
     def step(self, actions=[]): 
 
         # Шлюб відбувається лише за взаємної згоди
         marriage = all(action == 1 for action in actions)
-        
-        if marriage or self.time >= self.N:
+        observations = None
+        if marriage or self.time >= (self.N - 1):
             done = True
+            
+            self.reward_func.reset()
 
             for quality in self.current_qualities:
                 self.reward_func.add_score(quality)
 
             reward = self.reward_func.get_result()
-            info = {'msg': 'Marriage Success' if marriage else 'Last resort'}
             observations = self.current_qualities
+
+            info = {}
+            info['msg'] = 'Marriage Success'  if marriage else 'Last resort'
+            info['observations'] = self.current_qualities
+            info['ranks'] = self.get_absolute_ranks()
+            info['reward'] = self.reward_func.get_result()
+            info['step'] = self.time + 1
+         #   info['fraction'] = (self.time + 1) / self.N
+
+
         else:
             done = False
             reward = 0
@@ -214,12 +265,13 @@ class SecretaryEnv(gym.Env):
 
             info = {'msg': 'Next candidate'}
             observations = self._generate_next_observations()
-            
-        return observations, reward, done, info
+ # to do: add in return "step = self.time"  - done, info
+        return observations, done, info
     
     def render(self, mode='human'):
         if mode == 'text':
             print(f"Раунд: {self.time}/{self.N} | Якість М: {self.current_qualities[0]:.2f} | Якість Ж: {self.current_qualities[1]:.2f}")
+
 
 
 # # він має приймати кількість сторін, кількість кроків, функцію розрахунку балу (reward_func)

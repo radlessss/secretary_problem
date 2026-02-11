@@ -18,25 +18,48 @@ from secretary_package.utilfunctions import Multiplier, Adder, Averager
         threshold: Поріг, до якого агент лише збирає інформацію.
         max_obs: Максимальна якість кандидата, знайдена на даний момент.
 """
-class TwoSideThresholdAgent:
+class FixedThresholdStrategyAgent:
     def __init__(self, threshold):
+        if threshold <= 0 or threshold >= 1 or threshold is None:
+            raise ValueError("Threshold must be in (0, 1) range and not None.")
+        
         self.threshold = threshold
         self.max_obs = 0
     
     def reset(self):
         self.max_obs = 0
 
+#    def make_decision(self, obs):
+#        if len(obs) != 1:
+#            raise ValueError("Observation must contain state from one side.")
+#        step, _, current_quality = obs[0]
+#        if self.threshold >= step:
+#            self.max_obs = max(self.max_obs, current_quality)
+#           return [0] 
+#      elif current_quality >= self.max_obs:
+#            return [1]
+#        else:
+#            return [0]
+
     def make_decision(self, obs):
         if len(obs) != 1:
             raise ValueError("Observation must contain state from one side.")
+
         step, _, current_quality = obs[0]
-        if self.threshold >= step:
+
+        # skip phase
+        if step < self.threshold:
             self.max_obs = max(self.max_obs, current_quality)
-            return [0] 
-        elif current_quality >= self.max_obs:
-            return [1]
-        else:
             return [0]
+
+        # accept phase
+        if current_quality > self.max_obs:
+            self.max_obs = current_quality
+            return [1]
+
+        self.max_obs = max(self.max_obs, current_quality)
+        return [0]
+
 
 # to do add threshold agent implementation
 
@@ -63,6 +86,8 @@ class TwoSideThresholdAgent:
         threshold: Нормалізований поріг (від 0 до 1), що визначає тривалість фази навчання.
         score_calculation_func: Об'єкт (наприклад, Adder, Multiplier), що комбінує оцінки.
 """
+
+
 class CooperativeTwoSideThresholdAgent:
     def __init__(self, threshold, score_calculation_func):
         if threshold <= 0 or threshold >= 1 or threshold is None:

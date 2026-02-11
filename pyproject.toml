@@ -6,8 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "secretary_package"
 version = "0.1.0"
 description = "My awesome package"
-authors = [{ name = "Denys Raduchych", email = "raduchych.denys@gmail.com" }]
-dependencies = []
+authors = [{ name = "Olesia Raduchych", email = "lesyaraduchyc@gmail.com" }]
+dependencies = ["numpy"]
+
 
 [tool.setuptools]
 package-dir = {"" = "src"}

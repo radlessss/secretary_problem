@@ -68,26 +68,29 @@
 # np.savetxt(perfdir + 'cooperative_steps.dat', steps_lst)
 # print(f"Дані збережені в {perfdir}")
 
+
+from secretary_package import SecretaryEnv
+from secretary_package.threshold_agent import FixedThresholdStrategyAgent
+from secretary_package.utilfunctions import Averager
+import numpy as np
+
 """
-    Симуляція для одного агента у заданому середовищі.
+    Функція, яка реалізує логіку симуляції для однінєї сторони використовуючи об'єкт оточення і агента.
     
-    Ця функція підходить для класичної задачі секретаря або однієї сторони, 
-    яка намагається оптимізувати свій вибір незалежно від інших (або якщо середовище 
-    абстрагує другу сторону).
+    Ця функція реалізує класичну задачу секретаря для однієї сторони, 
+    яка намагається оптимізувати свій вибір в залежності від переданого об'єкта агента. 
 
     Аргументи:
-        environment: Ініціалізоване середовище (наприклад, OneSideSecretaryEnv).
-        agent: Об'єкт агента, що має методи `reset()` та `make_decision(obs)`.
-        episodes: Кількість незалежних епізодів (ігор) для запуску. За замовчуванням 1000.
+        environment: Ініціалізоване середовище.
+        agent: Об'єкт агента, що реалізує стратегію прийняття рішень.
+        episodes: Кількість незалежних епізодів симуляцій, які будуть проведені.
 
     Повертає:
-        rewards: Список отриманих винагород за кожен епізод.
-        steps: Список кількості кроків (скільки кандидатів було переглянуто) для кожного епізоду.
+        episodes_info: Список об'ктів з метриками отриманими під час проведення симуляції.
 """
 def run_one_side_simulation(environment, agent, episodes=1000):
 
-    rewards = []
-    steps = []
+    episodes_info = []
 
     for _ in range(episodes):
         obs = environment.reset()
@@ -96,14 +99,11 @@ def run_one_side_simulation(environment, agent, episodes=1000):
 
         while not terminated:
             action = agent.make_decision(obs)
-            #environment.render(mode='text')
+            obs, terminated, info = environment.step(action)
 
-            obs, reward, terminated, info = environment.step(action)
+        episodes_info.append(info)
 
-        rewards.append(reward)
-        steps.append(environment.time)
-
-    return rewards, steps
+    return episodes_info
 
 
 
@@ -131,6 +131,7 @@ def run_one_side_simulation(environment, agent, episodes=1000):
 def run_two_side_simulation(environment, agent1, agent2, episodes=1000):
     rewards = []
     steps = []
+    episodes_info = []
 
     for _ in range(episodes):
         obs = environment.reset()
@@ -146,8 +147,9 @@ def run_two_side_simulation(environment, agent1, agent2, episodes=1000):
 
         rewards.append(reward)
         steps.append(environment.time)
+        episodes_info.append(info)
 
-    return rewards, steps
+    return episodes_info
 
 
 
@@ -172,8 +174,7 @@ def run_two_side_simulation(environment, agent1, agent2, episodes=1000):
         rewards (list), steps (list)
 """
 def run_cooperative_two_side_simulation(environment, agent, episodes=1000):
-    rewards = []
-    steps = []
+    episodes_info = []
 
     for _ in range(episodes):
         obs = environment.reset()
@@ -184,11 +185,46 @@ def run_cooperative_two_side_simulation(environment, agent, episodes=1000):
             action = agent.make_decision(obs)
             environment.render(mode='text')
 
-            obs, reward, terminated, info = environment.step(action)
+            obs, terminated, info = environment.step(action)
 
-        rewards.append(reward)
-        steps.append(environment.time)
+        episodes_info.append(info)
 
-    return rewards, steps
+    return episodes_info
 
 
+
+def evaluate_one_side_thresholds_scores(thresholds, distributor, episodes, N):
+    avg_scores = []
+    avg_steps = []
+    avg_ranks = []
+    avg_successes = []
+
+    for th in thresholds:
+        env = SecretaryEnv(num_sides=1, N=N, reward_func=Averager(), distributor=distributor)
+        agent = FixedThresholdStrategyAgent(threshold=th)
+        info = run_one_side_simulation(environment=env, agent=agent, episodes=episodes)
+
+        # score/reward 
+        # Беремо "reward" з кожного епізоду — це якість кандидата, якого агент обрав  
+        scores = [i['reward'] for i in info] 
+        # Усереднюємо по всіх епізодах → отримуємо середню якість обраного кандидата для цього threshold 
+        avg_scores.append(np.mean(scores))   
+
+        # success rate ranks
+        # Беремо ранг обраного кандидата (1 = найкращий, 2 = другий і т.д.) з кожного епізоду
+        ranks = [i['ranks'][0] for i in info] 
+        # Конвертуємо ранги в успіх: 1, якщо обраний кандидат був найкращим, і 0, якщо ні
+        successes = [1 if r == 1 else 0 for r in ranks]
+        
+        # Усереднюємо успіхи - ймовірність того, що агент вибирає найкращого кандидата для цього threshold
+        avg_successes.append(np.mean(successes))
+        # Усереднюємо ранги - середній ранг обраного кандидата для цього threshold
+        avg_ranks.append(np.mean(ranks))
+
+        # steps
+        # Беремо крок (step), на якому агент зупинився в кожному епізоді
+        steps = [i['step'] for i in info]
+        # Усереднюємо кроки - середній крок вибору кандидата для цього threshold
+        avg_steps.append(np.mean(steps))
+
+    return avg_scores, avg_steps, avg_ranks, avg_successes

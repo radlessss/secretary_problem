@@ -44,6 +44,32 @@ class Averager:
         self.total = 0.0
         self.count = 0
 
+
+class UniformDistributor:
+    def __init__(self, low, high):
+        self.low = low
+        self.high = high
+
+    def sample(self):
+        return np.random.uniform(self.low, self.high)
+    
+class NormalDistributor:
+    def __init__(self, mean, stddev):
+        self.mean = mean
+        self.stddev = stddev
+
+    def sample(self):
+        return np.random.normal(self.mean, self.stddev)
+    
+class LogNormalDistributor:
+    def __init__(self, mean, sigma):
+        self.mean = mean
+        self.sigma = sigma
+
+    def sample(self):
+        return np.random.lognormal(self.mean, self.sigma)
+
+
 def scale_state(state, env):
     '''
     Масштабування координат стану в діапазон від -1.0 до 1.0.
