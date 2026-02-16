@@ -129,8 +129,6 @@ def run_one_side_simulation(environment, agent, episodes=1000):
         rewards (list), steps (list)
 """
 def run_two_side_simulation(environment, agent1, agent2, episodes=1000):
-    rewards = []
-    steps = []
     episodes_info = []
 
     for _ in range(episodes):
@@ -143,10 +141,8 @@ def run_two_side_simulation(environment, agent1, agent2, episodes=1000):
             actions = [agent1.make_decision(obs[0]), agent2.make_decision(obs[1])]
             environment.render(mode='text')
 
-            obs, reward, terminated, info = environment.step(actions)
+            obs, terminated, info = environment.step(actions)
 
-        rewards.append(reward)
-        steps.append(environment.time)
         episodes_info.append(info)
 
     return episodes_info

@@ -64,6 +64,41 @@ class FixedThresholdStrategyAgent:
 # to do add threshold agent implementation
 
 
+class FixedThresholdStrategyAgentProbne:
+    def __init__(self, threshold):
+        if threshold <= 0 or threshold >= 1 or threshold is None:
+            raise ValueError("Threshold must be in (0, 1) range and not None.")
+        
+        self.threshold = threshold
+        self.max_obs = 0
+    
+    def reset(self):
+        self.max_obs = 0
+
+    def make_decision(self, obs):
+        # obs — це numpy.array([step, max_score_so_far, current_quality])
+        # Перевіряємо, чи це дійсно масив з 3 елементами (якщо хочете залишити перевірку)
+        if len(obs) != 3:
+            raise ValueError(f"Observation must contain 3 elements, got {len(obs)}.")
+
+        # Пряме розпакування масиву
+        step, _, current_quality = obs
+
+        # 1. Фаза спостереження (skip phase)
+        # Оскільки step у вас — це (time+1)/N, порівнюємо з числовим порогом
+        if step < self.threshold:
+            self.max_obs = max(self.max_obs, current_quality)
+            return 0  # Повертаємо число, а не список [0]
+
+        # 2. Фаза вибору (accept phase)
+        if current_quality > self.max_obs:
+            return 1  # Погоджуємось
+        
+        # Оновлюємо рекорд, якщо не погодились
+        self.max_obs = max(self.max_obs, current_quality)
+        return 0
+
+
 """
     Реалізація кооперативного агента, який приймає рішення на основі об'єднаних даних 
     з двох сторін.

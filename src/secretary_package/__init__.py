@@ -2,7 +2,7 @@ from .environment import TwoSideSecretaryEnv
 from .environment import SecretaryEnv
 from .agent import agent_learner
 from .simulation import run_two_side_simulation, run_cooperative_two_side_simulation, run_one_side_simulation, evaluate_one_side_thresholds_scores
-from .threshold_agent import CooperativeTwoSideThresholdAgent, FixedThresholdStrategyAgent
+from .threshold_agent import CooperativeTwoSideThresholdAgent, FixedThresholdStrategyAgent, FixedThresholdStrategyAgentProbne
 from .utilfunctions import (
     scale_state, 
     single_shape_adaptor, 
@@ -37,6 +37,7 @@ __all__ = [
     "NormalDistributor",
     "LogNormalDistributor",
     "evaluate_one_side_thresholds_scores",
-    "FixedThresholdStrategyAgent"
+    "FixedThresholdStrategyAgent",
+    "FixedThresholdStrategyAgentProbne"
 ]
 __version__ = "0.1.1"
