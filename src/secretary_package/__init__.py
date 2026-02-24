@@ -1,8 +1,10 @@
 from .environment import TwoSideSecretaryEnv
 from .environment import SecretaryEnv
-from .agent import agent_learner
+#from .agent import agent_learner
 from .simulation import run_two_side_simulation, run_cooperative_two_side_simulation, run_one_side_simulation, evaluate_one_side_thresholds_scores
 from .threshold_agent import CooperativeTwoSideThresholdAgent, FixedThresholdStrategyAgent, FixedThresholdStrategyAgentProbne
+from .lstm_agent import StepAwareSecretaryLSTM, LSTMSecretaryAgent
+from .lstm_train import train_one_episode_pg, train_pg, evaluate_with_simulation
 from .utilfunctions import (
     scale_state, 
     single_shape_adaptor, 
@@ -38,6 +40,11 @@ __all__ = [
     "LogNormalDistributor",
     "evaluate_one_side_thresholds_scores",
     "FixedThresholdStrategyAgent",
-    "FixedThresholdStrategyAgentProbne"
+    "FixedThresholdStrategyAgentProbne",
+    "LSTMSecretaryAgent",
+    "StepAwareSecretaryLSTM",
+    "train_one_episode_pg",
+    "train_pg",
+    "evaluate_with_simulation"
 ]
 __version__ = "0.1.1"

@@ -99,7 +99,7 @@ def run_one_side_simulation(environment, agent, episodes=1000):
 
         while not terminated:
             action = agent.make_decision(obs)
-            obs, terminated, info = environment.step(action)
+            obs, terminated, info = environment.step([action])
 
         episodes_info.append(info)
 
