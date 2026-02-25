@@ -49,6 +49,9 @@ class StepAwareSecretaryLSTM(nn.Module):
         value = self.value_head(h)       # (batch, 1) 
         
         return stop_logit, value, (h, c) 
+    
+    def forward(self, x_t: torch.Tensor, state: tuple[torch.Tensor, torch.Tensor]):
+        return self.forward_step(x_t, state)
 
 
 
