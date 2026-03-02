@@ -1,4 +1,5 @@
 from secretary_package.utilfunctions import Multiplier, Adder, Averager
+import math
 """
     Реалізація базового агента для вирішення задачі про секретаря 
     з використанням порогової стратегії.
@@ -19,12 +20,13 @@ from secretary_package.utilfunctions import Multiplier, Adder, Averager
         max_obs: Максимальна якість кандидата, знайдена на даний момент.
 """
 class FixedThresholdStrategyAgent:
-    def __init__(self, threshold):
+    def __init__(self, threshold, count_of_candidates):
         if threshold <= 0 or threshold >= 1 or threshold is None:
             raise ValueError("Threshold must be in (0, 1) range and not None.")
         
         self.threshold = threshold
         self.max_obs = 0
+        self.count_of_candidates = count_of_candidates
     
     def reset(self):
         self.max_obs = 0
@@ -46,30 +48,31 @@ class FixedThresholdStrategyAgent:
             raise ValueError("Observation must contain state from one side.")
 
         step, _, current_quality = obs[0]
-
+        step = step/self.count_of_candidates
         # skip phase
-        if step < self.threshold:
+        if step < self.threshold or math.isclose(step, self.threshold):
             self.max_obs = max(self.max_obs, current_quality)
-            return [0]
+            return 0
 
         # accept phase
         if current_quality > self.max_obs:
             self.max_obs = current_quality
-            return [1]
+            return 1
 
         self.max_obs = max(self.max_obs, current_quality)
-        return [0]
+        return 0
 
 
 # to do add threshold agent implementation
 
 
 class FixedThresholdStrategyAgentProbne:
-    def __init__(self, threshold):
+    def __init__(self, threshold, count_of_candidates):
         if threshold <= 0 or threshold >= 1 or threshold is None:
             raise ValueError("Threshold must be in (0, 1) range and not None.")
         
         self.threshold = threshold
+        self.count_of_candidates = count_of_candidates
         self.max_obs = 0
     
     def reset(self):
@@ -78,12 +81,12 @@ class FixedThresholdStrategyAgentProbne:
     def make_decision(self, obs):
         # obs — це numpy.array([step, max_score_so_far, current_quality])
         # Перевіряємо, чи це дійсно масив з 3 елементами (якщо хочете залишити перевірку)
-        if len(obs) != 3:
-            raise ValueError(f"Observation must contain 3 elements, got {len(obs)}.")
+        if len(obs) != 1:
+            raise ValueError("Observation must contain state from one side.")
 
         # Пряме розпакування масиву
-        step, _, current_quality = obs
-
+        step, _, current_quality = obs[0]
+        step = step/self.count_of_candidates
         # 1. Фаза спостереження (skip phase)
         # Оскільки step у вас — це (time+1)/N, порівнюємо з числовим порогом
         if step < self.threshold:

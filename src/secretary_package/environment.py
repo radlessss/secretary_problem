@@ -210,7 +210,7 @@ class SecretaryEnv(gym.Env):
         self.current_qualities = list(self.observations[self.time])
         obs = []
         for i in range(0, self.num_sides):
-            obs_i = np.array([(self.time+1)/self.N, self.max_scores[i], self.current_qualities[i]], dtype=np.float32)
+            obs_i = np.array([self.time+1, self.max_scores[i], self.current_qualities[i]], dtype=np.float32)
             obs.append(obs_i)
         return obs
     

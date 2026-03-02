@@ -70,7 +70,7 @@
 
 
 from secretary_package import SecretaryEnv
-from secretary_package.threshold_agent import FixedThresholdStrategyAgent
+from secretary_package.threshold_agent import FixedThresholdStrategyAgent, FixedThresholdStrategyAgentProbne
 from secretary_package.utilfunctions import Averager
 import numpy as np
 
@@ -138,7 +138,7 @@ def run_two_side_simulation(environment, agent1, agent2, episodes=1000):
         terminated = False
 
         while not terminated:
-            actions = [agent1.make_decision(obs[0]), agent2.make_decision(obs[1])]
+            actions = [agent1.make_decision([obs[0]]), agent2.make_decision([obs[1]])]
             environment.render(mode='text')
 
             obs, terminated, info = environment.step(actions)
@@ -197,7 +197,7 @@ def evaluate_one_side_thresholds_scores(thresholds, distributor, episodes, N):
 
     for th in thresholds:
         env = SecretaryEnv(num_sides=1, N=N, reward_func=Averager(), distributor=distributor)
-        agent = FixedThresholdStrategyAgent(threshold=th)
+        agent = FixedThresholdStrategyAgent(threshold=th, count_of_candidates=N)
         info = run_one_side_simulation(environment=env, agent=agent, episodes=episodes)
 
         # score/reward 
