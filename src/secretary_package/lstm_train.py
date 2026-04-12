@@ -10,6 +10,7 @@ def train_one_episode_pg(
     value_coef: float = 0.5,
     entropy_coef: float = 0.01,
     grad_clip_norm: float | None = 1.0,
+    gamma: float = 0.99
 ):
     """
     Працює з вашим кастомним API: env.step(action) -> (obs, done, info),
@@ -37,7 +38,10 @@ def train_one_episode_pg(
 
     # Термінальна винагорода із середовища
     reward = float(info.get("reward", 0.0))
-    R = torch.tensor(reward, dtype=torch.float32, device=agent.device)
+    discounted_reward = reward * (gamma ** steps)
+    R = torch.tensor(discounted_reward, dtype=torch.float32, device=agent.device)
+
+ #   R = torch.tensor(reward, dtype=torch.float32, device=agent.device)
 
     log_probs_t = torch.stack(log_probs)   # (T,)
     entropies_t = torch.stack(entropies)   # (T,)
@@ -82,21 +86,26 @@ def train_pg(
     agent: LSTMSecretaryAgent,
     episodes: int = 10_000,
     lr: float = 3e-4,
+    gamma: float = 0.99,
     print_every: int = 500,
 ):
     optimizer = torch.optim.Adam(agent.model.parameters(), lr=lr)
     avg_reward = 0.0
+    avg_steps = 0.0
     beta = 0.98  # EMA для друку статистики
 
     for ep in range(1, episodes + 1):
-        metrics = train_one_episode_pg(env, agent, optimizer)
+        metrics = train_one_episode_pg(env, agent, optimizer, gamma=gamma)
         r = metrics["reward"]
+        s = metrics["steps"]
         avg_reward = beta * avg_reward + (1 - beta) * r
+        avg_steps = beta * avg_steps + (1 - beta) * s
 
         if ep % print_every == 0:
             print(
                 f"ep={ep:6d} | reward={r:.4f} | ema_reward={avg_reward:.4f} | "
-                f"steps={metrics['steps']} | loss={metrics['loss']:.4f}"
+                f"ema_steps={avg_steps:.1f} | loss={metrics['loss']:.4f}"
+               # f"steps={metrics['steps']} | loss={metrics['loss']:.4f}"
             )
 
     return agent
