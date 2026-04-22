@@ -2,8 +2,6 @@ import numpy as np
 import gym
 from gym import spaces
 from gym.utils import seeding
-from secretary_package.utilfunctions import Averager
-from secretary_package.utilfunctions import UniformDistributor, NormalDistributor, LogNormalDistributor
 
 # TO DO: impement ability to provide functional reward object for calculation of reward
 # it should be implemented in the same way as score_calculation_func in CooperativeTwoSideThresholdAgent
@@ -132,22 +130,17 @@ class TwoSideSecretaryEnv(gym.Env):
 """
     Узагальнене середовище задачі секретаря для довільної кількості сторін (num_sides).
 
-    Опис:
-    На відміну від TwoSideSecretaryEnv, цей клас підтримує N сторін (наприклад, 3+ агентів, 
-    які повинні дійти згоди). Також він використовує патерн Strategy для обчислення фінального 
-    рахунку через `reward_func`.
-
     Основна логіка:
     1. Ініціалізація: Приймає кількість сторін та об'єкт функції винагороди (наприклад, Averager, Multiplier).
-    2. Спостереження: Повертає список станів для кожного з `num_sides` агентів.
+    2. Спостереження: Повертає список станів для кожного з num_sides агентів.
     3. Крок (Step):
-       - Приймає список дій `actions`.
-       - Шлюб (зупинка) відбувається ТІЛЬКИ якщо `all(actions) == 1` (усі погодилися).
-       - При успіху або вичерпанні часу обчислюється винагорода за допомогою `reward_func`.
+       - Приймає список дій actions.
+       - Шлюб (зупинка) відбувається ТІЛЬКИ якщо all(actions) == 1 (усі погодилися).
+       - При успіху або вичерпанні часу обчислюється винагорода за допомогою reward_func.
     
     Атрибути:
         num_sides: Кількість агентів/сторін.
-        reward_func: Об'єкт, що має методи `add_score()` та `get_result()` (поліморфізм).
+        reward_func: Об'єкт, що має методи add_score() та get_result() (поліморфізм).
         current_qualities: Поточні якості кандидатів для кожної сторони.
 """
 class SecretaryEnv(gym.Env):
@@ -156,22 +149,21 @@ class SecretaryEnv(gym.Env):
         
         if num_sides < 1:
             raise ValueError("Number of sides must be at least 1.")
-        self.num_sides = num_sides
-        
         if N < 2:
             raise ValueError("N must be at least 2.")
-        self.N = N
-        
         if distributor is None:
             raise ValueError("Distributor must be added as parameter and not None.")
-        self.distributor = distributor
-
         if reward_func is None:
             raise ValueError("Reward function must be added as parameter and not None.")
+
+        self.num_sides = num_sides
+        self.N = N
+        self.distributor = distributor
         self.reward_func = reward_func
-        
+
         self.time = -1
         self.max_scores = [0.0 for _ in range(num_sides)]
+
         self.observations = self.generate_observations()
         self.current_qualities = list(self.observations[self.time])
         
@@ -181,97 +173,105 @@ class SecretaryEnv(gym.Env):
         #self.observation_space = spaces.Box(low=0, high=1.0, shape=(3,), dtype=np.float32)
         
     def generate_observations(self):
+        # Генерує всі можливі спостереження (послідовність кандидатів)
         observations = []
+        
         for i in range(self.N):
             obs = []
             for j in range(self.num_sides):
                 obs.append(self.distributor.sample())
             observations.append(tuple(obs))
+
         return observations
     
     def reset(self):
+        # Скидання середовища до початкового стану
         self.time = -1
         self.reward_func.reset()
-        # Найкращі бали, які бачили сторони до цього моменту
+
         self.max_scores = [0.0 for _ in range(self.num_sides)]
         self.observations = self.generate_observations()
         
         return self._generate_next_observations()
 
     def _generate_next_observations(self):
-        '''Повертає стан окремо для чоловіка і для жінки'''
-        # Генеруємо початкову пару
-        
+        # Формування спостереження для кожного агента
         self.time += 1
 
         if self.time >= self.N:
-            raise Exception(f" Поточний крок вийшов за межі кроку симуляції time={self.time}, N={self.N}")
+            raise Exception(f"Step out of bounds: time={self.time}, N={self.N}")
         
         self.current_qualities = list(self.observations[self.time])
+
         obs = []
-        for i in range(0, self.num_sides):
+        for i in range(self.num_sides):
             obs_i = np.array([self.time+1, self.max_scores[i], self.current_qualities[i]], dtype=np.float32)
             obs.append(obs_i)
+
         return obs
     
 
     def get_absolute_ranks(self):
-        agents_current_agent_qualities_ranks = []
+        # Обчислення абсолютного рангу поточних кандидатів серед усіх N можливих для кожного агента
+        ranks = []
 
         def compute_rank(qualities, q):
             sorted_qualities = sorted(qualities, reverse=True)
             return sorted_qualities.index(q) + 1
         
         for agent_idx, current_agent_quality in enumerate(self.current_qualities):
-            agent_values = [value [agent_idx] for value in self.observations]
-            current_agent_quality_rank = compute_rank(agent_values, current_agent_quality)
-            agents_current_agent_qualities_ranks.append(current_agent_quality_rank)
+            agent_values = [value[agent_idx] for value in self.observations]
+            rank = compute_rank(agent_values, current_agent_quality)
+            ranks.append(rank)
 
-        return agents_current_agent_qualities_ranks
+        return ranks
 
 
-    def step(self, actions=[]): 
+    def step(self, actions=None): 
+        # умова зупинки: всі агенти повинні погодитись
+        if actions is None:
+            actions = []
 
-        # Шлюб відбувається лише за взаємної згоди
         marriage = all(action == 1 for action in actions)
         observations = None
+
         if marriage or self.time >= (self.N - 1):
             done = True
             
             self.reward_func.reset()
-
             for quality in self.current_qualities:
                 self.reward_func.add_score(quality)
 
             reward = self.reward_func.get_result()
             observations = self.current_qualities
 
-            info = {}
-            info['msg'] = 'Marriage Success'  if marriage else 'Last resort'
-            info['observations'] = self.current_qualities
-            info['ranks'] = self.get_absolute_ranks()
-            info['reward'] = self.reward_func.get_result()
-            info['step'] = self.time + 1
-         #   info['fraction'] = (self.time + 1) / self.N
-
+            info = {
+                "msg": "Marriage Success" if marriage else "Last resort",
+                "observations": self.current_qualities,
+                "ranks": self.get_absolute_ranks(),
+                "reward": reward,
+                "step": self.time + 1
+            }
 
         else:
             done = False
             reward = 0
 
-            # Оновлюємо рекорди (те, що агенти бачили до цього)
             for i, quality in enumerate(self.current_qualities):
                 self.max_scores[i] = max(self.max_scores[i], quality)
 
-            info = {'msg': 'Next candidate'}
             observations = self._generate_next_observations()
- # to do: add in return "step = self.time"  - done, info
+
+            info = {'msg': 'Next candidate'}
+
         return observations, done, info
     
     def render(self, mode='human'):
         if mode == 'text':
-            print(f"Раунд: {self.time}/{self.N} | Якість М: {self.current_qualities[0]:.2f} | Якість Ж: {self.current_qualities[1]:.2f}")
+            qualities_str = " | ".join(
+            [f"Якість {i+1}: {q:.2f}" for i, q in enumerate(self.current_qualities)])
 
+            print(f"Раунд: {self.time}/{self.N} | {qualities_str}")
 
 
 # # він має приймати кількість сторін, кількість кроків, функцію розрахунку балу (reward_func)

@@ -1,7 +1,7 @@
 import torch
-import torch.nn as nn
+import torch.nn
 import numpy as np
-from secretary_package import StepAwareSecretaryLSTM, LSTMSecretaryAgent
+from secretary_package import LSTMSecretaryAgent
 
 def train_one_episode_pg(
     env,
@@ -13,16 +13,15 @@ def train_one_episode_pg(
     gamma: float = 0.99
 ):
     """
-    Працює з вашим кастомним API: env.step(action) -> (obs, done, info),
-    а фінальний reward бере з info["reward"].
-    Повертає метрики епізоду.
+    Один епізод навчання для policy gradient (Actor-Critic).
+    Використовується термінальна винагорода з env.info["reward"].
     """
+
     obs = env.reset()
     agent.reset()
 
-    log_probs = []
-    entropies = []
-    values = []
+    log_probs, entropies, values = [], [], []
+
     done = False
     steps = 0
     info = {}
@@ -34,37 +33,32 @@ def train_one_episode_pg(
         log_probs.append(logp)
         entropies.append(ent)
         values.append(v)
+
         steps += 1
 
-    # Термінальна винагорода із середовища
+    # terminal reward
     reward = float(info.get("reward", 0.0))
     discounted_reward = reward * (gamma ** steps)
     R = torch.tensor(discounted_reward, dtype=torch.float32, device=agent.device)
 
- #   R = torch.tensor(reward, dtype=torch.float32, device=agent.device)
+    log_probs_t = torch.stack(log_probs)  
+    entropies_t = torch.stack(entropies)   
+    values_t = torch.stack(values)        
 
-    log_probs_t = torch.stack(log_probs)   # (T,)
-    entropies_t = torch.stack(entropies)   # (T,)
-    values_t = torch.stack(values)         # (T,)
-
-    # Advantage: R - V(s_t)
+    # advantage
     advantages = (R - values_t).detach()
 
-    # Policy loss: -sum logπ(a|s) * advantage
+    # losses
     policy_loss = -(log_probs_t * advantages).sum()
-
-    # Value loss: MSE(V(s_t), R)
     value_loss = 0.5 * ((values_t - R) ** 2).sum()
-
-    # Entropy bonus (мінімізуємо loss, тому віднімаємо ентропію)
     entropy_loss = -(entropies_t.sum())
 
-    # Загальний loss
     loss = policy_loss + value_coef * value_loss + entropy_coef * entropy_loss
 
-    # Оновлення градієнтів
+    # backprop
     optimizer.zero_grad()
     loss.backward()
+
     if grad_clip_norm is not None:
         torch.nn.utils.clip_grad_norm_(agent.model.parameters(), grad_clip_norm)
     optimizer.step()
@@ -90,14 +84,17 @@ def train_pg(
     print_every: int = 500,
 ):
     optimizer = torch.optim.Adam(agent.model.parameters(), lr=lr)
+
     avg_reward = 0.0
     avg_steps = 0.0
-    beta = 0.98  # EMA для друку статистики
+    beta = 0.98  # EMA 
 
     for ep in range(1, episodes + 1):
         metrics = train_one_episode_pg(env, agent, optimizer, gamma=gamma)
+
         r = metrics["reward"]
         s = metrics["steps"]
+
         avg_reward = beta * avg_reward + (1 - beta) * r
         avg_steps = beta * avg_steps + (1 - beta) * s
 
@@ -113,12 +110,15 @@ def train_pg(
 
 # Приклад оцінки після навчання (детермінований threshold або стохастичний sample)
 def evaluate_with_simulation(run_one_side_simulation, env, agent, episodes: int = 1000):
+
     agent.inference_mode = "threshold"  # або "sample"
     agent.threshold = 0.5  # можна підбирати
 
     infos = run_one_side_simulation(env, agent, episodes=episodes)
+
     rewards = [i.get("reward", 0.0) for i in infos]
     mean_reward = float(np.mean(rewards)) if len(rewards) else 0.0
 
     print(f"Eval episodes={episodes} | mean_reward={mean_reward:.4f}")
+    
     return infos

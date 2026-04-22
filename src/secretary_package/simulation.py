@@ -95,6 +95,7 @@ def run_one_side_simulation(environment, agent, episodes=1000):
     for _ in range(episodes):
         obs = environment.reset()
         agent.reset()
+
         terminated = False
 
         while not terminated:
@@ -135,12 +136,12 @@ def run_two_side_simulation(environment, agent1, agent2, episodes=1000):
         obs = environment.reset()
         agent1.reset()
         agent2.reset()
+
         terminated = False
 
         while not terminated:
             actions = [agent1.make_decision([obs[0]]), agent2.make_decision([obs[1]])]
             environment.render(mode='text')
-
             obs, terminated, info = environment.step(actions)
 
         episodes_info.append(info)

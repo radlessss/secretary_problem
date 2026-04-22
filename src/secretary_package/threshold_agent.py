@@ -49,6 +49,7 @@ class FixedThresholdStrategyAgent:
 
         step, _, current_quality = obs[0]
         step = step/self.count_of_candidates
+        
         # skip phase
         if step < self.threshold or math.isclose(step, self.threshold):
             self.max_obs = max(self.max_obs, current_quality)
